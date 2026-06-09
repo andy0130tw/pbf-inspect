@@ -241,6 +241,10 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
         code.innerText = String.fromCodePoint(i.codepoint)
         el.appendChild(code)
         console.log(offset, glyph_table_offset, i['offset'])
+        if (offset > glyph_table_offset + i['offset']) {
+            outputErrorMessage(el, 'Reusing former glyph data, omitting')
+            continue
+        }
         while ((offset - glyph_table_offset - i['offset']) < 0) {
             outputItem(el, ['hex'], 4, 'Unused!?', 'Discarded while getting to correct offset.')
         }
