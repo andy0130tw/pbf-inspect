@@ -131,7 +131,7 @@ function outputItem(el, fmts, byteAmt, text, _comment) {
     li.innerHTML += text
     el.appendChild(li)
     offset += byteAmt
-    data = data.slice(byteAmt)
+    data = data.subarray(byteAmt)
     return uintify(item)
 }
 
@@ -147,11 +147,14 @@ function outputErrorMessage(el, s) {
 }
 
 /** @param {number} byteAmt */
-function readItem(byteAmt) {
-    let item = data.slice(0, byteAmt)
+function readBytes(byteAmt) {
+    if (data.length < byteAmt) {
+        throw new Error(`Unexpected end of data at ${offset}, read ${byteAmt} but only ${data.length} left`)
+    }
+    let item = data.subarray(0, byteAmt)
     offset += byteAmt
-    data = data.slice(byteAmt)
-    return uintify(item)
+    data = data.subarray(byteAmt)
+    return item
 }
 
 /**
@@ -253,32 +256,33 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
             outputItem(el, ['dec'], 1, 'Horiz-Advance')
         // outputItem(el, ['hex'], 3, '')
         if (features & 2) { // use rle4
-
+            outputErrorMessage(el, 'Parsing RLE4-encoded bitmap is not yet supported')
         } else { // actual bitmap
-            let i = 0
-            /**
-             * @type {number[]}
-             */
-            let buffer = []
-            while (i < Math.ceil(bitmapHeight * bitmapWidth / 8 / 4) * 4) {
-                buffer = buffer.concat(bitifybyte(
-                    readItem(1)
-                ))
-                i += 1
+            const bitmapBytes = Math.ceil(bitmapHeight * bitmapWidth / 8 / 4) * 4
+
+            const buffer = Array.from(readBytes(bitmapBytes)).flatMap(bitifybyte)
+
+            const imgData = new Uint8ClampedArray(bitmapHeight * bitmapWidth * 4)
+            for (let i = 0; i < bitmapHeight * bitmapWidth; i++) {
+                const data = buffer[i]
+                const color = data ? 220 : 0  // 1 = gainsboro
+                imgData[i * 4    ] = color
+                imgData[i * 4 + 1] = color
+                imgData[i * 4 + 2] = color
+                imgData[i * 4 + 3] = 255
             }
-            let code = ''
-            for (let i = 0; i < bitmapHeight; i++) {
-                code += '<tr>'
-                for (let j = 0; j < bitmapWidth; j++) {
-                    code += '<td class="' +
-                        (buffer.shift() ? 'l' : 'd') + '">'
-                    code += '</td>'
-                }
-                code += '</tr>'
-            }
-            let li = document.createElement('table')
-            li.innerHTML = code
-            el.appendChild(li)
+
+            const scaleFactor = 5
+            const canvas = document.createElement('canvas')
+            canvas.classList = 'rendered'
+            canvas.width = bitmapWidth * scaleFactor
+            canvas.height = bitmapHeight * scaleFactor
+            const ctx = canvas.getContext('2d')
+            ctx.putImageData(new ImageData(imgData, bitmapWidth, bitmapHeight), 0, 0)
+            ctx.imageSmoothingEnabled = false
+            ctx.drawImage(canvas, 0, 0, bitmapWidth, bitmapHeight, 0, 0, canvas.width, canvas.height)
+
+            el.appendChild(canvas)
         }
     }
     console.log(glyph_table_info)
@@ -313,7 +317,7 @@ function loadFile(f, el) {
         outputErrorMessage(el, `Unexpected version ${version}; aborting`)
         return
     }
-    if (glyph_amount > 1000) {
+    if (glyph_amount > 10000) {
         outputErrorMessage(el, `Too many glyphs (${glyph_amount}); aborting`)
         return
     }
