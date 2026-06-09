@@ -278,7 +278,6 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
 
             const scaleFactor = 5
             const canvas = document.createElement('canvas')
-            canvas.classList = 'rendered'
             canvas.width = bitmapWidth * scaleFactor
             canvas.height = bitmapHeight * scaleFactor
             const ctx = canvas.getContext('2d')
@@ -286,7 +285,11 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
             ctx.imageSmoothingEnabled = false
             ctx.drawImage(canvas, 0, 0, bitmapWidth, bitmapHeight, 0, 0, canvas.width, canvas.height)
 
-            el.appendChild(canvas)
+            const img = document.createElement('img')
+            img.classList = 'rendered'
+            img.src = canvas.toDataURL()
+
+            el.appendChild(img)
         }
     }
     console.log(glyph_table_info)
