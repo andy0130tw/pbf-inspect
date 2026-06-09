@@ -1,36 +1,44 @@
+/** @type {HTMLDivElement} */
 const list = document.body.querySelector('#main')
+/** @type {HTMLDivElement} */
 const dropEl = document.body.querySelector('#dropzone')
 
+/** @param {Iterable<number>} a */
 function hexify(a) {
-    out = []
+    const out = []
     for (let n of a) {
         out.push((n.toString(16).length == 1 ? '0' : '') + n.toString(16))
     }
     return out.join(' ')
 }
 
+/** @param {number} a */
 function hexify4(a) {
     return (Array(5 - a.toString(16).length).join('0') + a.toString(16))
 }
 
+
+/** @param {Iterable<number>} a */
 function binify(a) {
-    out = []
+    const out = []
     for (let n of a) {
         out.push(Array(9 - n.toString(2).length).join('0') + n.toString(2))
     }
     return out.join(' ')
 }
 
+/** @param {Iterable<number>} a */
 function textify(a) {
-    out = []
+    const out = []
     for (let n of a) {
         out.push((n > 32 && n < 127 ? String.fromCharCode(n) : '.'))
     }
     return out.join('')
 }
 
+/** @param {Iterable<number>} a */
 function uintify(a) {
-    out = 0
+    let out = 0
     let exp = 0;
     for (let n of a) {
         out += n * (1 << (exp * 8))
@@ -39,6 +47,7 @@ function uintify(a) {
     return out
 }
 
+/** @param {number} a */
 function bitifybyte(a) {
     // return [a >> 7,
     //        (a >> 6) & 1,
@@ -58,12 +67,18 @@ function bitifybyte(a) {
     ]
 }
 
+/** @param {Uint8Array} data */
 function initialize(data) {
     window.data = data
     window.offset = 0
     window.supported_codepoints = []
 }
 
+/**
+ * @param {HTMLElement} el
+ * @param {boolean} lg
+ * @param {string} [id]
+ */
 function outputSection(el, lg, id) {
     let it = document.createElement('hr')
     it.classList.toggle('huge', lg)
@@ -72,7 +87,14 @@ function outputSection(el, lg, id) {
     el.appendChild(it)
 }
 
-function outputItem(el, fmts, byteAmt, text) {
+/**
+ * @param {HTMLElement} el
+ * @param {string[]} fmts
+ * @param {number} byteAmt
+ * @param {string} text
+ * @param {string} [_comment]
+ */
+function outputItem(el, fmts, byteAmt, text, _comment) {
     let li = document.createElement('li'),
         content = document.createElement('span'),
         item = data.slice(0, byteAmt)
@@ -108,6 +130,7 @@ function outputItem(el, fmts, byteAmt, text) {
     return uintify(item)
 }
 
+/** @param {number} byteAmt */
 function readItem(byteAmt) {
     let item = data.slice(0, byteAmt)
     offset += byteAmt
@@ -115,6 +138,11 @@ function readItem(byteAmt) {
     return uintify(item)
 }
 
+/**
+ * @param {HTMLElement} el
+ * @param {number} size
+ * @returns {HashTableEntry[]}
+ */
 function loadHashTable(el, size) {
     outputSection(el, true, 'hash')
     let data = []
@@ -136,6 +164,13 @@ function loadHashTable(el, size) {
     return data
 }
 
+/**
+ * @param {HTMLElement} el
+ * @param {HashTableEntry[]} offset_table_info
+ * @param {number} codepoint_bytes
+ * @param {number} features
+ * @returns {OffsetTableEntry[]}
+ */
 function loadOffsetTables(el, offset_table_info, codepoint_bytes, features) {
     offset_table_info.sort((a, b) => a.offset - b.offset)
     let offset_table_offset = offset
@@ -165,6 +200,12 @@ function loadOffsetTables(el, offset_table_info, codepoint_bytes, features) {
     return out
 }
 
+/**
+ * @param {HTMLElement} el
+ * @param {OffsetTableEntry[]} glyph_table_info
+ * @param {number} codepoint_bytes
+ * @param {number} [features]
+ */
 function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
     glyph_table_info.sort((a, b) => a.offset - b.offset)
     console.log(glyph_table_info)
@@ -199,7 +240,10 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
 
         } else { // actual bitmap
             let i = 0
-            buffer = []
+            /**
+             * @type {number[]}
+             */
+            let buffer = []
             while (i < Math.ceil(bitmapHeight * bitmapWidth / 8 / 4) * 4) {
                 buffer = buffer.concat(bitifybyte(
                     readItem(1)
@@ -225,12 +269,15 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
     window.a = glyph_table_info
 }
 
+/**
+ * @param {ArrayBuffer} f
+ * @param {HTMLElement} el
+ */
 function loadFile(f, el) {
     el.innerHTML = ''
-    initialF = new Uint8Array(f);
-    console.log(initialF.length);
-    f = new Uint8Array(f);
-    initialize(f)
+    const initialF = new Uint8Array(f);
+    console.log('file len', initialF.length);
+    initialize(initialF)
 
     let version =
         outputItem(el, ['hex'], 1, 'Version', 'Font version.')
@@ -243,12 +290,16 @@ function loadFile(f, el) {
     let codepoint_bytes =
         outputItem(el, ['hex'], 1, 'Codepoint-Bytes', 'Size of a codepoint in the offset_table')
     let features = 0 // default u32 offsets in v2/v1
-    if (version >= 3) {
+    if (version == 3) {
         outputItem(el, ['hex'], 1, 'Size')
         features =
             outputItem(el, ['bin'], 1, 'Features [0b1 | 0: u32; 1: u16 /// 0b10 | bitmapped; 1: rle4]')
+    } else if (version > 3) {
+        list.append(`Unexpected version ${version}; aborting`)
+        return
     }
     if (glyph_amount > 1000) {
+        list.append(`Too many glyphs (${glyph_amount}); aborting`)
         return
     }
     let offset_table_info =
@@ -285,9 +336,11 @@ dropEl.addEventListener('drop', e => {
         let reader = new FileReader(),
             name = e.dataTransfer.files[0].name
         reader.readAsArrayBuffer(e.dataTransfer.files[0])
-        reader.addEventListener('load',
-            () => { console.log(btoa(reader.result));
-                loadFile(reader.result, list) })
+        reader.addEventListener('load', () => {
+            const ab = /** @type {ArrayBuffer} */(reader.result)
+            // console.log(btoa(Array.from(new Uint8Array(ab)).map(x => String.fromCodePoint(x)).join('')));
+            loadFile(ab, list)
+        })
     }
 })
 

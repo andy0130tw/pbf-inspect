@@ -3,6 +3,10 @@ body {
     font-family: -apple-system, Helvetica, Arial, sans-serif;
 }
 
+#footer {
+    margin: 8rem 4rem;
+}
+
 #dropzone {
     background: #DDD;
     padding: 2rem;
