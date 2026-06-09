@@ -85,3 +85,7 @@ td.l {
 td.d {
     background-color: black;
 }
+
+.error {
+    color: #c00;
+}

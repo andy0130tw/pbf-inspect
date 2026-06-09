@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "checkJs": true,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "skipLibCheck": false
   },
   "include": ["main.js", "ambient.d.ts"]
 }

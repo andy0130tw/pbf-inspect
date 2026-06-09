@@ -98,6 +98,11 @@ function outputItem(el, fmts, byteAmt, text, _comment) {
     let li = document.createElement('li'),
         content = document.createElement('span'),
         item = data.slice(0, byteAmt)
+
+    if (data.length < byteAmt) {
+        throw new Error(`Unexpected end of data ${offset}, read ${byteAmt} but only ${data.length} left`)
+    }
+
     li.innerHTML = '<code class="offset">' + hexify4(offset) + '</code>'
     content.classList.add('content')
     li.appendChild(content)
@@ -128,6 +133,17 @@ function outputItem(el, fmts, byteAmt, text, _comment) {
     offset += byteAmt
     data = data.slice(byteAmt)
     return uintify(item)
+}
+
+/**
+ * @param {HTMLElement} el
+ * @param {string} s */
+function outputErrorMessage(el, s) {
+  const li = document.createElement('li')
+  li.classList = 'error'
+  li.innerHTML = s
+  el.appendChild(li)
+  return s
 }
 
 /** @param {number} byteAmt */
@@ -274,7 +290,6 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
  * @param {HTMLElement} el
  */
 function loadFile(f, el) {
-    el.innerHTML = ''
     const initialF = new Uint8Array(f);
     console.log('file len', initialF.length);
     initialize(initialF)
@@ -295,11 +310,11 @@ function loadFile(f, el) {
         features =
             outputItem(el, ['bin'], 1, 'Features [0b1 | 0: u32; 1: u16 /// 0b10 | bitmapped; 1: rle4]')
     } else if (version > 3) {
-        list.append(`Unexpected version ${version}; aborting`)
+        outputErrorMessage(el, `Unexpected version ${version}; aborting`)
         return
     }
     if (glyph_amount > 1000) {
-        list.append(`Too many glyphs (${glyph_amount}); aborting`)
+        outputErrorMessage(el, `Too many glyphs (${glyph_amount}); aborting`)
         return
     }
     let offset_table_info =
@@ -335,11 +350,17 @@ dropEl.addEventListener('drop', e => {
         console.log('FILES')
         let reader = new FileReader(),
             name = e.dataTransfer.files[0].name
+
+        list.innerHTML = ''
         reader.readAsArrayBuffer(e.dataTransfer.files[0])
         reader.addEventListener('load', () => {
             const ab = /** @type {ArrayBuffer} */(reader.result)
             // console.log(btoa(Array.from(new Uint8Array(ab)).map(x => String.fromCodePoint(x)).join('')));
-            loadFile(ab, list)
+            try {
+                loadFile(ab, list)
+            } catch (/** @type {any} */ err) {
+                outputErrorMessage(list, err.message)
+            }
         })
     }
 })

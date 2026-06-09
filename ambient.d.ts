@@ -20,5 +20,5 @@ declare global {
   var data: Uint8Array
   var offset: number
   var supported_codepoints: string[]
-  var a: GlyphTableEntry
+  var a: OffsetTableEntry[]
 }
