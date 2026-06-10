@@ -264,32 +264,36 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
         } else { // actual bitmap
             const bitmapBytes = Math.ceil(bitmapHeight * bitmapWidth / 8 / 4) * 4
 
-            const buffer = Array.from(readBytes(bitmapBytes)).flatMap(bitifybyte)
+            if (bitmapBytes == 0) {
+                outputErrorMessage(el, 'Bitmap is empty')
+            } else {
+                const buffer = Array.from(readBytes(bitmapBytes)).flatMap(bitifybyte)
 
-            const imgData = new Uint8ClampedArray(bitmapHeight * bitmapWidth * 4)
-            for (let i = 0; i < bitmapHeight * bitmapWidth; i++) {
-                const data = buffer[i]
-                const color = data ? 220 : 0  // 1 = gainsboro
-                imgData[i * 4    ] = color
-                imgData[i * 4 + 1] = color
-                imgData[i * 4 + 2] = color
-                imgData[i * 4 + 3] = 255
+                const imgData = new Uint8ClampedArray(bitmapHeight * bitmapWidth * 4)
+                for (let i = 0; i < bitmapHeight * bitmapWidth; i++) {
+                    const data = buffer[i]
+                    const color = data ? 220 : 0  // 1 = gainsboro
+                    imgData[i * 4    ] = color
+                    imgData[i * 4 + 1] = color
+                    imgData[i * 4 + 2] = color
+                    imgData[i * 4 + 3] = 255
+                }
+
+                const scaleFactor = 5
+                const canvas = document.createElement('canvas')
+                canvas.width = bitmapWidth * scaleFactor
+                canvas.height = bitmapHeight * scaleFactor
+                const ctx = canvas.getContext('2d')
+                ctx.putImageData(new ImageData(imgData, bitmapWidth, bitmapHeight), 0, 0)
+                ctx.imageSmoothingEnabled = false
+                ctx.drawImage(canvas, 0, 0, bitmapWidth, bitmapHeight, 0, 0, canvas.width, canvas.height)
+
+                const img = document.createElement('img')
+                img.classList = 'rendered'
+                img.src = canvas.toDataURL()
+
+                el.appendChild(img)
             }
-
-            const scaleFactor = 5
-            const canvas = document.createElement('canvas')
-            canvas.width = bitmapWidth * scaleFactor
-            canvas.height = bitmapHeight * scaleFactor
-            const ctx = canvas.getContext('2d')
-            ctx.putImageData(new ImageData(imgData, bitmapWidth, bitmapHeight), 0, 0)
-            ctx.imageSmoothingEnabled = false
-            ctx.drawImage(canvas, 0, 0, bitmapWidth, bitmapHeight, 0, 0, canvas.width, canvas.height)
-
-            const img = document.createElement('img')
-            img.classList = 'rendered'
-            img.src = canvas.toDataURL()
-
-            el.appendChild(img)
         }
     }
     console.log(glyph_table_info)
@@ -324,10 +328,10 @@ function loadFile(f, el) {
         outputErrorMessage(el, `Unexpected version ${version}; aborting`)
         return
     }
-    if (glyph_amount > 10000) {
-        outputErrorMessage(el, `Too many glyphs (${glyph_amount}); aborting`)
-        return
-    }
+    // if (glyph_amount > 10000) {
+    //     outputErrorMessage(el, `Too many glyphs (${glyph_amount}); aborting`)
+    //     return
+    // }
     let offset_table_info =
         loadHashTable(el, hash_table_size)
     let glyph_table_info =
@@ -371,6 +375,7 @@ dropEl.addEventListener('drop', e => {
                 loadFile(ab, list)
             } catch (/** @type {any} */ err) {
                 outputErrorMessage(list, err.message)
+                console.error(err)
             }
         })
     }
