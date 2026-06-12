@@ -290,6 +290,8 @@ function loadGlyphTable(el, glyph_table_info, codepoint_bytes, features) {
 
                 const img = document.createElement('img')
                 img.classList = 'rendered'
+                img.width = canvas.width
+                img.height = canvas.height
                 img.src = canvas.toDataURL()
 
                 el.appendChild(img)
